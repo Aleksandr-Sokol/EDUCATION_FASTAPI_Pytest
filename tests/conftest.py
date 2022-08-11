@@ -1,107 +1,55 @@
 import sys
-# import pytest
-# from fastapi.testclient import TestClient
-# from sqlalchemy import create_engine
-# from sqlalchemy.ext.declarative import declarative_base
-# from sqlalchemy.orm import sessionmaker
-# sys.path = ['', '..'] + sys.path[1:]
-#
-# from app import my_app
 sys.path = ['', '..'] + sys.path[1:]
-from core.db import get_db, Base
-#
-#
-SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/postgres"  # Для асинхронного запуска postgres
-#
-# engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL
-# )
-# TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-#
-#
-# def override_get_db():
-#     try:
-#         db = TestingSessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-#
-#
-
-import os
-from typing import Any, Generator
-
+from core import Base
+from typing import Optional, AsyncIterable
 import pytest
-# from example.db.session import DBBase
-# from example.main import get_application
-# from example.routers.utils.db import get_db
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from fastapi import Depends
+from starlette.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine as Database
+from sqlalchemy.orm import Session
+from sqlalchemy_utils import database_exists, create_database, drop_database
+from app import app
+from core.db import get_db
 
-from app import my_app
 
-# Default to using sqlite in memory for fast tests.
-# Can be overridden by environment variable for testing in CI against other
-# database engines
-# SQLALCHEMY_DATABASE_URL = os.getenv('TEST_DATABASE_URL', "sqlite://")
+SQLALCHEMY_DATABASE_URI = "sqlite:///example_test.db"
+_db_conn = engine = create_engine(SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False})
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
-)
+def get_test_db_conn() -> Database:
+    assert _db_conn is not None
+    return _db_conn
 
-Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-#
-@pytest.fixture(autouse=True)
-def app() -> Generator[FastAPI, Any, None]:
-    """
-    Create a fresh database on each test case.
-    """
-    Base.metadata.create_all(engine)  # Create the tables.
-    _app = my_app
-    yield _app
-    Base.metadata.drop_all(engine)
+def get_test_db() -> AsyncIterable[Session]:
+    session = Session(bind=_db_conn)
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+    if database_exists(SQLALCHEMY_DATABASE_URI):
+        drop_database(SQLALCHEMY_DATABASE_URI)
+    create_database(SQLALCHEMY_DATABASE_URI)  # Create the test database.
+    Base.metadata.create_all(_db_conn)  # Create the tables.
+    app.dependency_overrides[get_db] = get_test_db  # Mock the Database Dependency
+    yield  # Run the tests.
+    drop_database(SQLALCHEMY_DATABASE_URI)  # Drop the test database.
 
 
 @pytest.fixture
-def db_session(app: FastAPI) -> Generator[Session, Any, None]:
-    """
-    Creates a fresh sqlalchemy session for each test that operates in a
-    transaction. The transaction is rolled back at the end of each test ensuring
-    a clean state.
-    """
-
-    # connect to the database
-    connection = engine.connect()
-    # begin a non-ORM transaction
-    transaction = connection.begin()
-    # bind an individual Session to the connection
-    session = Session(bind=connection)
-    yield session  # use the session in tests.
+def test_db_session():
+    session = Session(bind=_db_conn)
+    yield session
+    for tbl in reversed(Base.metadata.sorted_tables):
+        _db_conn.execute(tbl.delete())
     session.close()
-    # rollback - everything that happened with the
-    # Session above (including calls to commit())
-    # is rolled back.
-    transaction.rollback()
-    # return connection to the Engine
-    connection.close()
 
 
-# @pytest.fixture()
-# def client(app: FastAPI, db_session: Session) -> Generator[TestClient, Any, None]:
-#     """
-#     Create a new FastAPI TestClient that uses the `db_session` fixture to override
-#     the `get_db` dependency that is injected into routes.
-#     """
-#
-#     def _get_test_db():
-#         try:
-#             yield db_session
-#         finally:
-#             pass
-#
-#     app.dependency_overrides[get_db] = _get_test_db
-#     with TestClient(app) as client:
-#         yield client
+@pytest.fixture()
+def client():
+    with TestClient(app) as client:
+        yield client
