@@ -1,6 +1,6 @@
 from .base import CRUDBase
-from database.models import UserData
+from database.models import PersonData
 
 
 class UserDataCRUD(CRUDBase):
-    model = UserData
+    model = PersonData

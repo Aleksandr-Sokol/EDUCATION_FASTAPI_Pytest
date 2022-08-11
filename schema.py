@@ -1,14 +1,7 @@
 from pydantic import BaseModel
 
-class Message(BaseModel):
-    message: str
 
-
-class NumSchema(BaseModel):
-    value: int
-
-
-class UserSchema(BaseModel):
+class PersonDataSchema(BaseModel):
     name: str
     family: str
     age: int
@@ -17,5 +10,18 @@ class UserSchema(BaseModel):
         orm_mode = True
 
 
-class DataSchema(UserSchema):
+class PersonDataDataSchema(PersonDataSchema):
+    id: int
+
+
+class UserSchema(BaseModel):
+    username: str
+    email: str
+    password: str
+
+    class Config:
+        orm_mode = True
+
+
+class UserDataSchema(UserSchema):
     id: int
