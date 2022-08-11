@@ -53,3 +53,9 @@ def test_db_session():
 def client():
     with TestClient(app) as client:
         yield client
+
+# Ассинхронный клиент, в conftest.py
+# @pytest.fixture
+# async def async_client():
+#     async with AsyncClient(app=app, base_url="http://test") as client:
+#         yield client

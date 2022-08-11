@@ -6,7 +6,7 @@ from app import app
 
 # Синхронная
 async def test_get_person(client):
-    response = await client.get("/person/1")
+    response = client.get("/person/1")
     assert response.status_code == 200
 
 # # Ассинхронная
@@ -36,10 +36,3 @@ def test_post_person(test_db_session, client, datafix_read):
 #     response = await async_client.post("/person/", json=d)
 #     assert response.status_code == 200
 #     assert response.json() != {}
-
-
-# Ассинхронный клиент, в conftest.py
-# @pytest.fixture
-# async def async_client():
-#     async with AsyncClient(app=app, base_url="http://test") as client:
-#         yield client

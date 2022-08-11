@@ -1,4 +1,4 @@
-from config import loop, KAFKA_BOOTSTRAP_SERVERS, KAFKA_CONSUMER_GROUP, KAFKA_TOPIC
+# from config import loop, KAFKA_BOOTSTRAP_SERVERS, KAFKA_CONSUMER_GROUP, KAFKA_TOPIC
 import json
 from sqlalchemy.orm import Session
 from fastapi import Depends, APIRouter
@@ -8,7 +8,7 @@ from schema import PersonDataSchema, PersonDataDataSchema
 
 
 router = APIRouter(
-    prefix="/user",
+    prefix="/person",
     responses={404: {"description": "Sorry Not found"}},
 )
 
