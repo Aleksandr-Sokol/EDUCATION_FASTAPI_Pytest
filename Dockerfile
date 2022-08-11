@@ -15,8 +15,10 @@ RUN pip install -r requirements.txt
 
 
 # копируем содержимое текущей папки в контейнер
-COPY ./consumer/ ./config.py ./schema.py .
+# COPY ./consumer/ ./config.py ./schema.py .
+COPY . .
 # CMD [ "python", "run.py" ]
+CMD [ "pytest"]
 
 
 #FROM python:3
